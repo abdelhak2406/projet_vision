@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--path_text', nargs='?',default='./tests/',
                     help='path to the textfile you want to send?')
     parser.add_argument('--text', nargs='?',default='tahya vision',
-                    help='path to the textfile you want to send?')
+                    help='text to send in the image')
 
     return parser.parse_args()
 
@@ -104,7 +104,7 @@ def put_bit_in_value(value:int , bit_value, bit_index = 0):
 def encode_img(text:str, img):
     """Encode the text inside the image."""
     # check if the length is enough or not! 
-    print("img shape before encoding ",img.shape)
+
     h , w= img.shape 
     max_length  = (w * h) / 8
     if( len(text) < max_length ):
@@ -150,10 +150,12 @@ def decode_img(img):
         car = chr(car_ascii)
         text = text + car 
         # i don't get why it works but it works, 
-        # if we delete this if we will see weird things!
+        # if we delete this we will see weird things!
         if(car=="\0"): 
             break
-    print("\n\n\n\n\n the text is : ",text)
+    print("------------------------------------------------")
+    print("The text is: ",text)
+    print("------------------------------------------------")
 
 
 def main():
