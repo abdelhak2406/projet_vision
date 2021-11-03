@@ -107,31 +107,18 @@ def encode_img(text:str, img):
     print("img shape before encoding ",img.shape)
     h , w= img.shape 
     max_length  = (w * h) / 8
-    # int(text_ascii,2) to put from binary to int maybe use numpy 
     if( len(text) < max_length ):
         for i in range(len(text)):#used this cause i need i as a number later
             for j in range(8):
                 char_i_j_th_bit = get_bit( ord(text[i])  , bit_index = j )
 
-                #print("the char bit  ",char_i_j_th_bit)
                 _i = (i*8+j)//w
                 _j = (i*8+j)%w
                 img_pixel = img[_i][_j]
-                
-                #print("img [",k_i,"]","[",k_j,"] = ",img_pixel)
-                #print("my img_pixel type before: ",type(img_pixel))
-                print("id img[x][y]: ", hex( id( img[_i][_j]) ) )
-                #print("img pixel before ", bin(img_pixel))
+
                 img_pixel = put_bit_in_value(img_pixel, char_i_j_th_bit)
                 img_pixel = img_pixel.astype(np.uint8) 
-                
                 img[_i][_j] = img_pixel
-                print("id img_pixel",hex(id(img_pixel)))
-
-                #print("img pixel after ", bin(img_pixel))
-                    
-                #print("the pixel type after: ",type(img_pixel))
-                print("\n\n-----------------------------------\n-----------------------------------") 
     else:
         exit("Text too big for the image!")
     return img
@@ -147,10 +134,9 @@ def decode_img(img):
         the text encoded in the image
     
     Note:
+        sometimes things work, just let them, just be happy about it!
     """
-    h , w= img.shape 
     img = img.flatten()
-    #print("the flatten image:\n",img)
     text=""
     for i in range(0,len(img),8):
         car = chr(255)
@@ -161,7 +147,6 @@ def decode_img(img):
 
             car_ascii = put_bit_in_value(value = car_ascii, bit_value=last_bit_img ,bit_index =j) 
 
-        #car = chr(new_val)
         car = chr(car_ascii)
         text = text + car 
         # i don't get why it works but it works, 
@@ -176,15 +161,11 @@ def main():
     args = parse_args()
     img = cv2.imread(args.impath,cv2.IMREAD_GRAYSCALE)
 
-    #img = cv2.resize(img, (8,8), interpolation = cv2.INTER_AREA)
-    print("the image\n",img)
-    print("le parcours:\n")
-    #print(type(img))#numpy.ndarray
     if img is not None:
         encoded_img = encode_img(img=img,text=args.text)
+        #TODO: another way to save or something
         cv2.imwrite('../img/encoded_img.png',encoded_img)
         decode_img(encoded_img)
-        # TODO: save the image!
     else:
         exit("ERROR NO image or somthing!")
     
