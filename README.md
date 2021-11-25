@@ -17,13 +17,6 @@ after that activate the envirnment and
 ### But
 
 Faire de la steganographie
-
-### Approche
-
-#### Encodage
-
-#### Decodage
-
 # What i learned:
 
 - check the bit legth of a character 
