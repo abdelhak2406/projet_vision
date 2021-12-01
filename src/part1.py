@@ -1,14 +1,9 @@
 """Encode and decode the text inside a GRAYSCALE image (for now!)
 """
-"""
-    *  TODO: find the image format that don't compress so we will not have issues when"sending" things
-    *  TODO: use isascsii to check if the characters are okay
-        ref: https://realpython.com/python-encodings-guide/
-    
-"""
 import cv2
 import argparse
 import numpy as np
+import os
 
 def parse_args():  
     '''
@@ -16,13 +11,17 @@ def parse_args():
     '''
     parser = argparse.ArgumentParser(description="Image text encoding script.")
     # Path
-    parser.add_argument('--impath', nargs='?',default='../img/2000.png',
-                        help='Image path')
+    parser.add_argument('--impath', nargs='?',default='img/2000.png',
+                        help='Image path of the image to code or decode depend on --action')
+    parser.add_argument('--imcodepath', nargs='?',default='img/encoded_img.png',
+                        help='Image path of the encoded image')
     #TODO: maybe supprimer!(il faut gerer la taille des donné!)
     parser.add_argument('--path_text', nargs='?',default='./tests/',
                     help='path to the textfile you want to send?')
     parser.add_argument('--text', nargs='?',default='tahya vision',
                     help='text to send in the image')
+    parser.add_argument('--action', nargs='?',type=int ,default='1',
+                        choices=[1,2],help='Encode or decode the image')
 
     return parser.parse_args()
 
@@ -64,7 +63,7 @@ def set_bit(value:int, bit_index):
 
 
 def get_bit(value:int, bit_index):
-    """Get the bit in bit_index to 1.
+    """Get the bit in bit_index .
 
     Keyword arguments:
     value --  the value as an integer.
@@ -88,7 +87,7 @@ def put_bit_in_value(value:int , bit_value, bit_index = 0):
     Keyword arguments:
     value --  the value as an integer( the pixel value).
     bit_index -- the bit in the value we want to set to bit_value.
-    vit_value -- the value we want to set in the bit_index
+    bit_value -- the value we want to set in the bit_index
 
     Returns:
         the value with the new bit value in bit_index changed.
@@ -158,19 +157,39 @@ def decode_img(img):
     print("------------------------------------------------")
 
 
+def read_img(img_path):
+    """Read img in path"""
+
+    img = cv2.imread(img_path,cv2.IMREAD_GRAYSCALE)
+    if img is not None:
+        return img        
+    else:
+        exit("ERROR NO image or somthing!")
+
+
+def save_img(img, img_path):
+    """Save the image!"""
+
+    # get the path witout the imgage name 
+    path ="/".join(img_path.split("/")[:-1])
+    if not os.path.exists(path):
+        print("path:\"",path,"\"  doesnt exist so we created it")
+        os.makedirs(path)
+
+    cv2.imwrite(img_path, img)
+
 def main():
     # read the image
     args = parse_args()
-    img = cv2.imread(args.impath,cv2.IMREAD_GRAYSCALE)
+    img = read_img(args.impath)
 
-    if img is not None:
-        encoded_img = encode_img(img=img,text=args.text)
-        #TODO: another way to save or something
-        cv2.imwrite('../img/encoded_img.png',encoded_img)
-        decode_img(encoded_img)
-    else:
-        exit("ERROR NO image or somthing!")
-    
+    if args.action == 1:#encode
+        img_encoded = encode_img(img=img,text=args.text)
+        save_img(img_encoded, args.imcodepath)
+    else:#decode
+        decode_img(img)
+
+
 
 if __name__ == '__main__':
     main()
