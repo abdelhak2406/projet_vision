@@ -187,6 +187,8 @@ def calcul_needle_map():
     #load mat_imgs and ligth sources
     obj_images = openPkl("mat_imgs.pkl", "out_objects/")
     light_sources = load_lightSources()
+    obj_masques = load_objMask().flatten()
+
     
     #initializing a 3d array
     h,w =  512, 612
@@ -199,16 +201,18 @@ def calcul_needle_map():
     nb_cols = obj_images.shape[1]
     #loop through the columns of mat_imgs
     for i in range(nb_cols):
-        vector_e = obj_images[:,i]
-        normal_vector = np.dot(inv_light_sources,vector_e)
         if col == 612:
             col = 0
             line += 1
 
-        normals_mat[line, col, 0] = normal_vector[0]
-        normals_mat[line, col, 1] = normal_vector[1]
-        normals_mat[line, col, 2] = normal_vector[2]
+        if obj_masques[i] == 1:
+            vector_e = obj_images[:,i]
+            normal_vector = np.dot(inv_light_sources,vector_e)
 
+            normals_mat[line, col, 0] = normal_vector[0]
+            normals_mat[line, col, 1] = normal_vector[1]
+            normals_mat[line, col, 2] = normal_vector[2]
+        
         col += 1
     
     return normals_mat
