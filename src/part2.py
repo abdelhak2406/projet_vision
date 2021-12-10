@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
+from numpy.core.fromnumeric import transpose
 from tqdm import tqdm
-from utilities import savePkl
+import math
+from utilities import savePkl, openPkl
 lightDpath="data/light_directions.txt"
 lightIpath="data/light_intensities.txt"
 maskPath="data/mask.png"
@@ -182,13 +184,74 @@ def create_img_matrix(img):
     return img.flatten()
     
 
+"""_________________________________ part2 __________________________________"""
+def calcul_needle_map():
+    #load mat_imgs and ligth sources
+    obj_images = openPkl("mat_imgs.pkl", "out_objects/")
+    light_sources = load_lightSources()
+    obj_masques = load_objMask().flatten()
+
+    
+    #initializing a 3d array
+    h,w =  512, 612
+    line, col = 0, 0
+    normals_mat = np.zeros((h,w,3), np.float32)
+
+    #inverse of the light sources matrix
+    inv_light_sources = np.linalg.pinv(light_sources)
+    #get number of columns of mat_imgs
+    nb_cols = obj_images.shape[1]
+    #loop through the columns of mat_imgs
+    for i in range(nb_cols):
+        if col == 612:
+            col = 0
+            line += 1
+
+        if obj_masques[i] == 1:
+            vector_e = obj_images[:,i]
+            normal_vector = np.dot(inv_light_sources,vector_e)
+
+            normals_mat[line, col, 0] = normal_vector[0]
+            normals_mat[line, col, 1] = normal_vector[1]
+            normals_mat[line, col, 2] = normal_vector[2]
+        
+        col += 1
+    
+    return normals_mat
+
+def show_normals_in_img(filename, base_path = "out_objects/"):
+    #load mask object and normals mat
+    mask_obj = load_objMask()
+    normals_mat = openPkl(filename, base_path)
+
+    #initializing a 3d array
+    h,w,c = normals_mat.shape
+    new_img = np.zeros((h,w,c), np.uint8)
+    
+    for i in range(h):
+        for j in range(w):
+            if mask_obj[i,j] == 1:
+                n = math.sqrt(normals_mat[i,j,0]**2 + normals_mat[i,j,1]**2 + normals_mat[i,j,2]**2)
+                for k in range(c):
+                    new_img[i,j,k] = int((((normals_mat[i,j,k]/n)+1)/2)*255)
+
+    cv2.imshow('result', new_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
 
 def main():
+    """
     mask=load_objMask()
     mat_intens = load_lightintensity()
     mat_imgs = load_images(mat_intens=mat_intens)
     savePkl(mat_imgs,"mat_imgs.pkl","out_objects/")
-
+    
+    normals_mat = calcul_needle_map()
+    savePkl(normals_mat,"normals_mat.pkl","out_objects/")
+    """
+    show_normals_in_img("normals_mat.pkl")
+    
 
 if __name__ == "__main__":
     main()
