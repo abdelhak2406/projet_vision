@@ -173,7 +173,9 @@ def read_img(img_path):
 
 
 def create_img_matrix(img):
-    """take the img flatten it     Keyword arguments:
+    """take the img flatten it    
+    
+     Keyword arguments:
 
     img -- the image encoded flot32 with one channel
     """
