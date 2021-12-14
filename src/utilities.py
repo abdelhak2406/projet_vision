@@ -1,4 +1,4 @@
-import pickle
+import pickle5 as pickle
 
 def openPkl(filename,pathopen):
     with  open(pathopen+filename,"rb") as file:

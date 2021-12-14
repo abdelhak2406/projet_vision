@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from numpy.core.fromnumeric import transpose
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 import math
 from utilities import savePkl, openPkl
@@ -219,6 +220,7 @@ def calcul_needle_map():
     
     return normals_mat
 
+
 def show_normals_in_img(filename, base_path = "out_objects/"):
     #load mask object and normals mat
     mask_obj = load_objMask()
@@ -240,6 +242,34 @@ def show_normals_in_img(filename, base_path = "out_objects/"):
     cv2.destroyAllWindows()
 
 
+def generate_depth_map(mask, normals):
+    
+
+    h,w,c = normals.shape
+    z = np.zeros((h,w), np.float32)
+    x, y = 0, 0
+    step = 10
+    while(x < h):
+        y = 0
+        while(y < w):
+            if mask[x,y] == 1:
+                normal_vector = normals[x,y]
+                inner = np.inner(normal_vector, [1,0,0])
+                norms = np.linalg.norm(normal_vector) * np.linalg.norm([1,0,0])
+                cos = inner / norms
+                rad = np.arccos(np.clip(cos, -1.0, 1.0))
+                deg = np.rad2deg(rad)
+
+                alpha = abs(90 - deg)
+                
+                for i in range(step):
+                    z[x, y+i] = math.tan(alpha)
+            
+            y += 1
+
+        x += 1 
+    return z
+
 def main():
     """
     mask=load_objMask()
@@ -250,8 +280,16 @@ def main():
     normals_mat = calcul_needle_map()
     savePkl(normals_mat,"normals_mat.pkl","out_objects/")
     """
-    show_normals_in_img("normals_mat.pkl")
-    
+    #show_normals_in_img("normals_mat.pkl")
+    normals = openPkl("normals_mat.pkl", "out_objects/")
+    z = generate_depth_map(load_objMask(), normals)
 
+ 
+    # syntax for 3-D projection
+    ax = plt.axes(projection ='3d')
+    x, y = np.mgrid[0:512:512j, 0:612:612j]
+    ax.plot_surface(x, y, z, cmap="summer")
+    plt.show()
+    print(z[:, 400])
 if __name__ == "__main__":
     main()

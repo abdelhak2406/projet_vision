@@ -4,3 +4,4 @@ src/result.txt
 env/
 data/
 out_objects/
+*__pycache__
