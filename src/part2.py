@@ -1,13 +1,10 @@
 import cv2
 import numpy as np
-from scipy.sparse import csr_matrix
 from numpy.core.fromnumeric import transpose
 from tqdm import tqdm
 import math
 from utilities import savePkl, openPkl
 import matplotlib.pyplot as plt
-from scipy.linalg import orth
-from scipy.fft import fft, ifft
 
 
 lightDpath="data/light_directions.txt"
@@ -181,9 +178,7 @@ def read_img(img_path):
 
 
 def create_img_matrix(img):
-    """take the img flatten it    
-    
-     Keyword arguments:
+    """take the img flatten it     Keyword arguments:
 
     img -- the image encoded flot32 with one channel
     """
@@ -388,28 +383,31 @@ def calcul_3D(mask, image):
             if mask[y,x] == 1 :
                 z[y,x] = z[y, x-1] - p[y,x]
 
-
     ax = plt.axes(projection="3d")
     x, y = np.mgrid[0:512:512j, 0:612:612j]
     ax.plot_surface(x, y, z,cmap="Greys")
     plt.show()
-
     return z
 
     
 
    
 def main():
+    #création de la matrice des images
     """
     mask=load_objMask()
     mat_intens = load_lightintensity()
     mat_imgs = load_images(mat_intens=mat_intens)
     savePkl(mat_imgs,"mat_imgs.pkl","out_objects/")
-    
+    """
+    #création de la matrice des normales et affichage du résultat
+    """
     normals_mat = calcul_needle_map()
     savePkl(normals_mat,"normals_mat.pkl","out_objects/")
-    
+    show_normals_in_img("normals_mat.pkl", "out_objects/")
     """
+
+    #affichage de l'objet 3D
     mask = load_objMask()
     normals = openPkl("normals_mat.pkl","out_objects/")
     z = calcul_3D(mask, normals)
