@@ -1,9 +1,15 @@
 import cv2
 import numpy as np
+from scipy.sparse import csr_matrix
 from numpy.core.fromnumeric import transpose
 from tqdm import tqdm
 import math
 from utilities import savePkl, openPkl
+import matplotlib.pyplot as plt
+from scipy.linalg import orth
+from scipy.fft import fft, ifft
+
+
 lightDpath="data/light_directions.txt"
 lightIpath="data/light_intensities.txt"
 maskPath="data/mask.png"
@@ -240,6 +246,159 @@ def show_normals_in_img(filename, base_path = "out_objects/"):
     cv2.destroyAllWindows()
 
 
+"""_________________________________ part3 __________________________________"""
+def depth_map_generation(obj_mask, normals_mat):
+    """Generate the depth map of the object
+    
+    Keyword arguments:
+    obj_mask -- the mask of the object
+    normals_mat -- the normals of the object
+    """
+
+    #don't know what type of data to use
+
+    h, w = obj_mask.shape
+
+    index = np.zeros((h,w), np.uint8)
+
+    nb_pixels = h*w
+    object_pixel_rows = []
+    object_pixel_cols = []
+
+    #check if there is a function in np to do this
+    for i in range(h):
+        for j in range(w):
+            if obj_mask[i,j] == 1:
+                object_pixel_rows.append(i)
+                object_pixel_cols.append(j)
+    object_pixels = np.vstack((object_pixel_rows, object_pixel_cols))
+
+    nb_pixels = object_pixels.shape[1]
+
+    for d in range(nb_pixels):
+        index[object_pixels[0,d], object_pixels[1,d]] = d
+    
+    
+    m = np.zeros((2*nb_pixels, nb_pixels), np.uint8)
+    b = np.zeros((2*nb_pixels, 1), np.float)
+    #ça sert à quelque chose ?
+    n = np.zeros((2*nb_pixels, 1), np.float)
+
+    for d in range(nb_pixels):
+        p_row = object_pixels[0,d]
+        p_col = object_pixels[1,d]  
+        nx = normals_mat[p_row, p_col, 0]
+        ny = normals_mat[p_row, p_col, 1]
+        nz = normals_mat[p_row, p_col, 2]
+
+
+        if index[p_row, p_col+1] > 0 and index[p_row-1, p_col] > 0:
+            m[2*d-1, index[p_row, p_col]] = 1
+            m[2*d-1, index[p_row, p_col+1]] = -1
+            b[2*d-1, 0] = nx/nz
+
+            m[2*d, index[p_row, p_col]] = 1
+            m[2*d, index[p_row-1, p_col]] = -1
+            b[2*d, 0] = ny/nz
+        
+        elif index[p_row-1, p_col] > 0:
+            f = -1
+            if index[p_row, p_col+1] > 0:
+                m[2*d-1, index[p_row, p_col]] = 1
+                m[2*d-1, index[p_row, p_col+f]] = -1
+                b[2*d-1, 0] = f*nx/nz
+
+            m[2*d, index[p_row, p_col]] = 1
+            m[2*d, index[p_row-1, p_col]] = -1
+            b[2*d, 0] = ny/nz
+        
+        elif index[p_row, p_col+1] > 0:
+            f = -1
+            if index[p_row-f, p_col] > 0:
+                m[2*d, index[p_row, p_col]] = 1
+                m[2*d, index[p_row-f, p_col]] = -1
+                n[2*d, 0] = f*ny/nz
+            
+            m[2*d-1, index[p_row, p_col]] = 1
+            m[2*d-1, index[p_row, p_col+1]] = -1
+            n[2*d-1, 0] = nx/nz
+        
+        else:
+            f = -1
+            if index[p_row, p_col+f] > 0:
+                m[2*d-1, index[p_row, p_col]] = 1
+                m[2*d-1, index[p_row, p_col+f]] = -1
+                n[2*d-1, 0] = f*nx/nz
+            
+            f = -1
+            if index[p_row-f, p_col] > 0:
+                m[2*d, index[p_row, p_col]] = 1
+                m[2*d, index[p_row-f, p_col]] = -1
+                b[2*d, 0] = f*ny/nz
+    
+    print(m.shape)
+    m = np.ma.masked_equal(m,0)
+    print(m.shape)
+    return "ok"
+    #the problem is here
+    x = np.linalg.lstsq(m, b)
+
+    x = x - min(x)
+
+    temp_shape = np.zeros((h,w), np.float32)
+    for d in range(nb_pixels):
+        p_row = object_pixels[0,d]
+        p_col = object_pixels[1,d]
+        temp_shape[p_row, p_col] = x[0,d]
+    
+    z = np.zeros((h,w), np.float32)
+    for i in range(h):
+        for j in range(w):
+            z[i,j] = temp_shape[i,j]
+
+    return z
+
+
+def image_in_gray(image):
+    h, w ,c = image.shape
+    imageGray = np.zeros((h,w), np.float32)
+    for y in range(h):  
+        for x in range(w):
+            imageGray[y,x]= image[y, x, 0]*0.11+ image[y, x, 1]*0.59+ image[y, x, 2]*0.3
+    return imageGray
+
+def calcul_3D(mask, image):
+    #transforme l'image en niveau de gris
+    imageG = image_in_gray(image)
+    #imageG = (imageG+1)/2*255
+    p = np.gradient(imageG, 1, axis=0)
+    q = np.gradient(imageG, 1, axis=1)
+
+    #initialisation de la matrice de profondeur
+    z = np.zeros(imageG.shape, np.float32)
+    h, w = imageG.shape
+
+    #calcul de la profondeur au niveau de la premiere colonne
+    for y in range(1,h):
+        z[y,0] = z[y-1,0] - q[y,0]
+
+    #calcul de la profondeur pour chaque ligne
+    for y in range(h):
+        for x in range(1,w):
+            if mask[y,x] == 1 :
+                z[y,x] = z[y, x-1] - p[y,x]
+
+
+    ax = plt.axes(projection="3d")
+    x, y = np.mgrid[0:512:512j, 0:612:612j]
+    ax.plot_surface(x, y, z,cmap="Greys")
+    plt.show()
+
+    return z
+
+    
+
+   
 def main():
     """
     mask=load_objMask()
@@ -249,8 +408,12 @@ def main():
     
     normals_mat = calcul_needle_map()
     savePkl(normals_mat,"normals_mat.pkl","out_objects/")
+    
     """
-    show_normals_in_img("normals_mat.pkl")
+    mask = load_objMask()
+    normals = openPkl("normals_mat.pkl","out_objects/")
+    z = calcul_3D(mask, normals)
+    
     
 
 if __name__ == "__main__":
